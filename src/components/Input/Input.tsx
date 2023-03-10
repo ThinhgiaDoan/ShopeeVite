@@ -24,7 +24,10 @@ export default function Input({
     <div className='mt-8'>
       <input
         type={type}
-        className='w-full rounded-sm border border-gray-300 p-3 outline-none focus:border-gray-500 focus:shadow-sm'
+        className={
+          'w-full rounded-sm border border-gray-300 p-3 outline-none focus:border-gray-500 focus:shadow-sm' +
+          className
+        }
         placeholder={placeHolder}
         autoComplete={autoComplete}
         {...register(name, rules)}

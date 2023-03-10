@@ -1,16 +1,52 @@
 import React from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
+import { getRules, schema, Schema } from 'src/utils/rules'
+import { yupResolver } from '@hookform/resolvers/yup'
+import { useMutation } from '@tanstack/react-query'
+import { login } from 'src/apis/auth.api'
+import { omit } from 'lodash'
+import { isAxiosUnprocessableEntityError } from 'src/utils/utils'
+import { ResponseApi } from 'src/types/utils.type'
+import Input from 'src/components/Input'
+
+const loginSchema = schema.pick(['email', 'password'])
+type FormData = Omit<Schema, 'confirm_password'>
 
 function Login() {
   const {
     register,
     handleSubmit,
+    setError,
+    getValues,
     formState: { errors }
-  } = useForm()
+  } = useForm<FormData>({
+    resolver: yupResolver(loginSchema)
+  })
+  const loginAccountMutation = useMutation({
+    mutationFn: (body: Omit<FormData, 'confirm_password'>) => login(body)
+  })
+  const rules = getRules(getValues)
 
   const onSubmit = handleSubmit((data) => {
-    console.log(data)
+    loginAccountMutation.mutate(data, {
+      onSuccess: (data) => {
+        console.log(data)
+      },
+      onError: (error) => {
+        if (isAxiosUnprocessableEntityError<ResponseApi<FormData>>(error)) {
+          const formError = error.response?.data.data
+          if (formError) {
+            Object.keys(formError).forEach((key) => {
+              setError(key as keyof FormData, {
+                message: formError[key as keyof FormData],
+                type: 'Server'
+              })
+            })
+          }
+        }
+      }
+    })
   })
   return (
     <div className='bg-orange'>
@@ -23,28 +59,29 @@ function Login() {
             >
               <div className='text-2xl'>Đăng nhập</div>
               <div className='mt-8'>
-                <input
+                <Input
                   type='email'
+                  register={register}
                   name='email'
-                  className='w-full rounded-sm border border-gray-300 p-3 outline-none focus:border-gray-500 focus:shadow-sm'
-                  placeholder='Email'
+                  className='mt-8'
+                  errorMessage={errors.email?.message}
+                  placeHolder='Email'
+                  rules={rules.email}
                 />
-                <div className='mt-1 min-h-[1rem] text-sm text-red-600'>
-                  Email không hợp lệ
-                </div>
               </div>
               <div className='mt-3'>
-                <input
+                <Input
                   type='password'
+                  register={register}
                   name='password'
-                  className='w-full rounded-sm border border-gray-300 p-3 outline-none focus:border-gray-500 focus:shadow-sm'
-                  placeholder='Password'
+                  className='mt-2'
+                  errorMessage={errors.password?.message}
+                  placeHolder='Password'
+                  rules={rules.password}
                   autoComplete='on'
                 />
               </div>
-              <div className='mt-1 min-h-[1rem] text-sm text-red-600'>
-                Password không hợp lệ
-              </div>
+
               <div className='mt-3'>
                 <button
                   type='submit'
