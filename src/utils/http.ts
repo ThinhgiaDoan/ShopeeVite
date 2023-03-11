@@ -1,10 +1,17 @@
 import axios, { type AxiosInstance, AxiosError } from 'axios'
 import HttpStatusCode from 'src/constants/httpStatusCode.enum'
-import { isAxiosUnprocessableEntityError } from './utils'
-import { ToastContainer, toast } from 'react-toastify'
+import { toast } from 'react-toastify'
+import { AuthRespone } from 'src/types/auth.type'
+import {
+  clearAccessTokenFromLS,
+  getAccessTokenFromLS,
+  saveAccessTokenToLS
+} from './auth'
 class Http {
   instance: AxiosInstance
+  private accessToken: string
   constructor() {
+    this.accessToken = getAccessTokenFromLS()
     this.instance = axios.create({
       baseURL: 'https://api-ecom.duthanhduoc.com/',
       timeout: 10000,
@@ -12,9 +19,28 @@ class Http {
         'Content-Type': 'application/json'
       }
     })
-
+    this.instance.interceptors.request.use(
+      (config) => {
+        if (this.accessToken && config.headers) {
+          config.headers.authorization = this.accessToken
+          return config
+        }
+        return config
+      },
+      (error) => {
+        return Promise.reject(error)
+      }
+    )
     this.instance.interceptors.response.use(
-      function (response) {
+      (response) => {
+        const { url } = response.config
+        if (url === '/login' || url === '/register') {
+          this.accessToken = (response.data as AuthRespone).data?.access_token
+          saveAccessTokenToLS(this.accessToken)
+        } else if (url !== '/logout') {
+          this.accessToken = ''
+          clearAccessTokenFromLS()
+        }
         return response
       },
       function (error: AxiosError) {

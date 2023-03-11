@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { getRules, schema, Schema } from 'src/utils/rules'
 import Input from 'src/components/Input'
@@ -7,14 +7,19 @@ import { useMutation } from '@tanstack/react-query'
 import { registerAccount } from 'src/apis/auth.api'
 import { omit } from 'lodash'
 import { isAxiosUnprocessableEntityError } from 'src/utils/utils'
-import { ResponseApi } from 'src/types/utils.type'
+import { ErrorResponse } from 'src/types/utils.type'
+import { useContext } from 'react'
+import { AppContext } from 'src/contexts/app.context'
 type FormData = Pick<Schema, 'email' | 'password' | 'confirm_password'>
 const registerSchema = schema.pick(['email', 'password', 'confirm_password'])
+
 function Register() {
+  const { setIsAuthenticated } = useContext(AppContext)
+  const navigate = useNavigate()
+
   const {
     register,
     handleSubmit,
-    watch,
     getValues,
     setError,
     formState: { errors }
@@ -30,13 +35,14 @@ function Register() {
   const onSubmit = handleSubmit((data) => {
     const body = omit(data, ['confirm_password'])
     registerAccountMutation.mutate(body, {
-      onSuccess: (data) => {
-        console.log(data)
+      onSuccess: () => {
+        setIsAuthenticated(true)
+        navigate('/')
       },
       onError: (error) => {
         if (
           isAxiosUnprocessableEntityError<
-            ResponseApi<Omit<FormData, 'confirm_password'>>
+            ErrorResponse<Omit<FormData, 'confirm_password'>>
           >(error)
         ) {
           const formError = error.response?.data.data
@@ -65,7 +71,6 @@ function Register() {
       }
     })
   })
-  // console.log('erros', errors)
 
   return (
     <div className='bg-orange'>
